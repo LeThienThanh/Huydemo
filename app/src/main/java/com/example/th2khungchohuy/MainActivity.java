@@ -1,6 +1,7 @@
 package com.example.th2khungchohuy;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
@@ -9,6 +10,7 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.View;
@@ -59,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
         mref = FirebaseDatabase.getInstance().getReference();
         msto = FirebaseStorage.getInstance().getReference();
 
-
+        /// Click vào sẽ vào thư mục chọn ảnh
         btncustom.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -69,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        /// Click vào sẽ vào thư mục chọn ảnh
         btnclothe.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -78,19 +81,23 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
-
-
+            /// Hủy tác vụ
             if (resultCode == Activity.RESULT_CANCELED) {
                 Toast.makeText(this, "Cancelled", Toast.LENGTH_SHORT).show();
+
+                /// chọn ảnh của custom
             } else if (requestCode == CUSTOM_IMG){
                 imageUri = data.getData();
                 Picasso.get().load(imageUri.toString()).into(imgcustom);
                 upload("custom",imgcustom);
+
+                /// chọn ảnh của clothe
             } else if (requestCode == CLOTHE_IMG){
                 imageUri = data.getData();
                 Picasso.get().load(imageUri.toString()).into(imgclothe);
@@ -98,19 +105,28 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-
     }
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     public void upload(String type, ImageView img){
+        //// xử lí ảnh
         img.setDrawingCacheEnabled(true);
         img.buildDrawingCache();
 
-        Bitmap bitmap = img.getDrawingCache();
+        @SuppressLint({"NewApi", "LocalSuppress"}) Bitmap bitmap = null;
+        try {
+            bitmap = MediaStore.Images.Media.getBitmap(Objects.requireNonNull(MainActivity.this).getContentResolver(), imageUri);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream);
         byte[] data = byteArrayOutputStream.toByteArray();
 
+        //// tạo đường link
         final StorageReference filepath = msto.child(type).child(imageUri.getLastPathSegment());
 
+        /// push lên firebase
         filepath.putBytes(data).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
             @Override
             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
